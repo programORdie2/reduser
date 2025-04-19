@@ -13,14 +13,14 @@ const (
 )
 
 type request struct {
-	Token         string      `json:"token"`
-	Action        string      `json:"action"`
-	VariableName  string      `json:"variable_name"`
-	VariableValue interface{} `json:"variable_value,omitempty"`
+	Token         string `json:"token"`
+	Action        string `json:"action"`
+	VariableName  string `json:"variable_name"`
+	VariableValue any    `json:"variable_value,omitempty"`
 }
 
 var (
-	variables = make(map[string]interface{})
+	variables = make(map[string]any)
 	mu        sync.RWMutex
 )
 
