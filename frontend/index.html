@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Project Manager</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 1rem;
+			}
+			.hidden {
+				display: none;
+			}
+			input,
+			button,
+			select {
+				margin: 0.5rem 0;
+				padding: 0.5rem;
+				width: 100%;
+				box-sizing: border-box;
+			}
+			nav {
+				margin-bottom: 1rem;
+			}
+			nav button {
+				width: auto;
+			}
+			.item {
+				border: 1px solid #ccc;
+				padding: 0.5rem;
+				margin: 0.5rem 0;
+				cursor: pointer;
+			}
+			h2 {
+				margin-top: 2rem;
+			}
+			table {
+				width: 100%;
+				border-collapse: collapse;
+				margin-top: 1rem;
+			}
+			th,
+			td {
+				border: 1px solid #ccc;
+				padding: 0.5rem;
+				text-align: left;
+			}
+		</style>
+	</head>
+	<body>
+		<nav id="nav" class="hidden">
+			<button id="logoutBtn">Logout</button>
+		</nav>
+
+		<!-- Register -->
+		<section id="registerSection">
+			<h2>Register</h2>
+			<input id="regUsername" placeholder="Username" />
+			<input id="regPassword" type="password" placeholder="Password" />
+			<button id="registerBtn">Register</button>
+			<p>Already have an account? <a href="#login" id="toLogin">Login</a></p>
+		</section>
+
+		<!-- Login -->
+		<section id="loginSection" class="hidden">
+			<h2>Login</h2>
+			<input id="loginUsername" placeholder="Username" />
+			<input id="loginPassword" type="password" placeholder="Password" />
+			<button id="loginBtn">Login</button>
+			<p>
+				Don’t have an account? <a href="#register" id="toRegister">Register</a>
+			</p>
+		</section>
+
+		<!-- Dashboard -->
+		<section id="dashboardSection" class="hidden">
+			<h2>Your Projects</h2>
+			<div id="projectsList"></div>
+			<input id="newProjectName" placeholder="New Project Name" />
+			<button id="createProjectBtn">Create Project</button>
+		</section>
+
+		<!-- Project Detail -->
+		<section id="projectSection" class="hidden">
+			<button id="backToDash">← Back</button>
+			<h2 id="projectTitle"></h2>
+			<h3>Tables</h3>
+			<div id="tablesList"></div>
+			<input id="newTableName" placeholder="New Table Name" />
+			<button id="createTableBtn">Add Table</button>
+			<div id="varsSection" class="hidden">
+				<h3>Variables in <span id="currentTableName"></span></h3>
+				<table>
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Type</th>
+							<th>Value</th>
+							<th>Action</th>
+						</tr>
+					</thead>
+					<tbody id="varsList"></tbody>
+				</table>
+				<input id="varName" placeholder="Name" />
+				<select id="varType">
+					<option value="string">String</option>
+					<option value="int">Int</option>
+					<option value="float">Float</option>
+					<option value="bool">Bool</option>
+				</select>
+				<input id="varValue" placeholder="Value" />
+				<button id="setVarBtn">Set Variable</button>
+			</div>
+		</section>
+
+		<script>
+			const apiBase = "http://localhost:8080";
+			let jwt = localStorage.getItem("jwt") || "";
+			let currentProject = null;
+			let currentTable = null;
+
+			// DOM refs
+			const nav = document.getElementById("nav");
+			const logoutBtn = document.getElementById("logoutBtn");
+
+			const registerSection = document.getElementById("registerSection");
+			const loginSection = document.getElementById("loginSection");
+			const dashboardSection = document.getElementById("dashboardSection");
+			const projectSection = document.getElementById("projectSection");
+			const varsSection = document.getElementById("varsSection");
+
+			// Navigation
+			document.getElementById("toLogin").onclick = () => showSection("login");
+			document.getElementById("toRegister").onclick = () =>
+				showSection("register");
+			logoutBtn.onclick = () => {
+				localStorage.removeItem("jwt");
+				jwt = "";
+				showSection("login");
+			};
+			document.getElementById("backToDash").onclick = () =>
+				showSection("dashboard") && loadProjects();
+
+			// Buttons
+			document.getElementById("registerBtn").onclick = register;
+			document.getElementById("loginBtn").onclick = login;
+			document.getElementById("createProjectBtn").onclick = createProject;
+			document.getElementById("createTableBtn").onclick = createTable;
+			document.getElementById("setVarBtn").onclick = setVariable;
+
+			// Initial
+			if (jwt) {
+				showSection("dashboard");
+				loadProjects();
+			} else showSection("login");
+
+			function showSection(sec) {
+				[
+					registerSection,
+					loginSection,
+					dashboardSection,
+					projectSection,
+				].forEach((s) => s.classList.add("hidden"));
+				nav.classList.add("hidden");
+				varsSection.classList.add("hidden");
+				switch (sec) {
+					case "register":
+						registerSection.classList.remove("hidden");
+						break;
+					case "login":
+						loginSection.classList.remove("hidden");
+						break;
+					case "dashboard":
+						dashboardSection.classList.remove("hidden");
+						nav.classList.remove("hidden");
+						break;
+					case "project":
+						projectSection.classList.remove("hidden");
+						nav.classList.remove("hidden");
+						break;
+				}
+			}
+
+			async function register() {
+				const username = document.getElementById("regUsername").value;
+				const password = document.getElementById("regPassword").value;
+				await fetch(`${apiBase}/register`, {
+					method: "POST",
+					body: JSON.stringify({ username, password }),
+					headers: { "Content-Type": "application/json" },
+				});
+				alert("Registered! Please login.");
+				showSection("login");
+			}
+
+			async function login() {
+				const username = document.getElementById("loginUsername").value;
+				const password = document.getElementById("loginPassword").value;
+				const res = await fetch(`${apiBase}/login`, {
+					method: "POST",
+					body: JSON.stringify({ username, password }),
+					headers: { "Content-Type": "application/json" },
+				});
+				const data = await res.json();
+				if (data.token) {
+					jwt = data.token;
+					localStorage.setItem("jwt", jwt);
+					showSection("dashboard");
+					loadProjects();
+				} else alert("Login failed");
+			}
+
+			async function loadProjects() {
+				const res = await fetch(`${apiBase}/projects`, {
+					headers: { Authorization: "Bearer " + jwt },
+				});
+				const list = await res.json();
+				const container = document.getElementById("projectsList");
+				container.innerHTML = "";
+				list.forEach((p) => {
+					console.log("PROJECT", p);
+
+					const div = document.createElement("div");
+					div.textContent = p.Name;
+					div.className = "item";
+					div.onclick = () => openProject(p.ID, p.Name, p.Token);
+					container.appendChild(div);
+				});
+			}
+
+			async function createProject() {
+				const name = document.getElementById("newProjectName").value;
+				await fetch(`${apiBase}/projects`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: "Bearer " + jwt,
+					},
+					body: JSON.stringify({ name }),
+				});
+				loadProjects();
+			}
+
+			function openProject(id, name, token) {
+				currentProject = { id, name, token };
+				document.getElementById("projectTitle").textContent = name;
+				showSection("project");
+				loadTables();
+			}
+
+			async function loadTables() {
+				console.log("CURRENT PROJECT", currentProject);
+
+				const res = await fetch(
+					`${apiBase}/projects/${currentProject.id}/tables`,
+					{ headers: { Authorization: "Bearer " + jwt } },
+				);
+				const tables = await res.json();
+				const container = document.getElementById("tablesList");
+				container.innerHTML = "";
+				tables.forEach((t) => {
+					const div = document.createElement("div");
+					div.textContent = t.name;
+					div.className = "item";
+					div.onclick = () => openTable(t.id, t.name);
+					container.appendChild(div);
+				});
+			}
+
+			async function createTable() {
+				const name = document.getElementById("newTableName").value;
+				await fetch(`${apiBase}/projects/${currentProject.id}/tables`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						Authorization: "Bearer " + jwt,
+					},
+					body: JSON.stringify({ name }),
+				});
+				loadTables();
+			}
+
+			async function openTable(id, name) {
+				currentTable = { id, name };
+				document.getElementById("currentTableName").textContent = name;
+				varsSection.classList.remove("hidden");
+				loadVars();
+			}
+
+			async function loadVars() {
+				const payload = {
+					token: currentProject.token,
+					action: "list",
+					table: currentTable.name,
+				};
+				// backend doesn't have list action; we'll use GET /variables instead:
+				const res = await fetch(
+					`${apiBase}/projects/${currentProject.id}/tables/${currentTable.id}/variables`,
+					{ headers: { Authorization: "Bearer " + jwt } },
+				);
+				const vars = await res.json();
+				const tbody = document.getElementById("varsList");
+				tbody.innerHTML = "";
+				vars.forEach((v) => {
+					const tr = document.createElement("tr");
+					["name", "type", "value"].forEach((k) => {
+						const td = document.createElement("td");
+						td.textContent = v[k];
+						tr.appendChild(td);
+					});
+					const btn = document.createElement("button");
+					btn.textContent = "Refresh";
+					btn.onclick = () => setVariable(v.name, v.type, v.value);
+					const td = document.createElement("td");
+					td.appendChild(btn);
+					tr.appendChild(td);
+					tbody.appendChild(tr);
+				});
+			}
+
+			async function setVariable(name, type, value) {
+				// Overloaded: if called from list, use passed args
+				if (arguments.length === 0) {
+					name = document.getElementById("varName").value;
+					type = document.getElementById("varType").value;
+					value = document.getElementById("varValue").value;
+				}
+				const payload = {
+					token: currentProject.token,
+					action: "set",
+					table: currentTable.name,
+					variable: name,
+					value,
+					type,
+				};
+				await fetch(`${apiBase}/access`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(payload),
+				});
+				loadVars();
+			}
+		</script>
+	</body>
+</html>
