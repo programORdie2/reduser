@@ -66,16 +66,37 @@ func GetProjectByToken(db *sql.DB, token string) (id, userID int, err error) {
 	}
 	return
 }
-func GetProject(db *sql.DB, projID, userID int) (string, error) {
+func GetProject(db *sql.DB, projID, userID int) (map[string]any, error) {
 	var name string
 	err := db.QueryRow(
 		`SELECT name FROM projects WHERE id = ? AND user_id = ?`,
 		projID, userID,
 	).Scan(&name)
 	if err == sql.ErrNoRows {
-		return "", ErrNotFound
+		return nil, ErrNotFound
 	}
-	return name, err
+	tables, err := ListTables(db, projID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	type TableWithVariables struct {
+		ID        int
+		Name      string
+		Variables []struct {
+			Name  string
+			Type  string
+			Value string
+		}
+	}
+	var tablesWithVariables []TableWithVariables
+	// For each table, get the variables
+	for _, table := range tables {
+		variables, _ := ListVariables(db, table.ID, userID)
+		tablesWithVariables = append(tablesWithVariables, TableWithVariables{ID: table.ID, Name: table.Name, Variables: variables})
+	}
+
+	return map[string]any{"name": name, "tables": tablesWithVariables}, err
 }
 
 func RenameProject(db *sql.DB, projID int, name string, userID int) error {
@@ -161,23 +182,26 @@ func CreateVariable(db *sql.DB, tableID int, name, value, typ string, userID int
 }
 
 func ListVariables(db *sql.DB, tableID int, userID int) ([]struct {
-	Name string
-	Type string
+	Name  string
+	Type  string
+	Value string
 }, error) {
-	rows, err := db.Query(`SELECT name, type FROM variables WHERE table_id = ? AND user_id = ?`, tableID)
+	rows, err := db.Query(`SELECT name, type, value FROM variables WHERE table_id = ? AND user_id = ?`, tableID, userID)
 	if err != nil {
 		return nil, err
 	}
 	var variables []struct {
-		Name string
-		Type string
+		Name  string
+		Type  string
+		Value string
 	}
 	for rows.Next() {
 		var variable struct {
-			Name string
-			Type string
+			Name  string
+			Type  string
+			Value string
 		}
-		if err := rows.Scan(&variable.Name, &variable.Type); err != nil {
+		if err := rows.Scan(&variable.Name, &variable.Type, &variable.Value); err != nil {
 			return nil, err
 		}
 		variables = append(variables, variable)
@@ -186,14 +210,14 @@ func ListVariables(db *sql.DB, tableID int, userID int) ([]struct {
 }
 
 func DeleteVariable(db *sql.DB, tableID int, name string, userID int) error {
-	_, err := db.Exec(`DELETE FROM variables WHERE table_id = ? AND name = ? AND user_id = ?`, tableID, name)
+	_, err := db.Exec(`DELETE FROM variables WHERE table_id = ? AND name = ? AND user_id = ?`, tableID, name, userID)
 	return err
 }
 
 func UpdateVariable(db *sql.DB, tableID int, name, newName, typ string, userID int) error {
 	_, err := db.Exec(
 		`UPDATE variables SET name = ?, type = ? WHERE table_id = ? AND name = ? AND user_id = ?`,
-		newName, typ, tableID, name,
+		newName, typ, tableID, name, userID,
 	)
 	return err
 }

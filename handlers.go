@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -28,10 +30,26 @@ type errorResp struct {
 	Error string `json:"error"`
 }
 
+var keyMatchRegex = regexp.MustCompile(`\"(\w+)\":`)
+var wordBarrierRegex = regexp.MustCompile(`(\w{2,})([A-Z])`)
+
 func writeJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(v)
+
+	marshalled, _ := json.Marshal(v)
+
+	converted := keyMatchRegex.ReplaceAllFunc(
+		marshalled,
+		func(match []byte) []byte {
+			return bytes.ToLower(wordBarrierRegex.ReplaceAll(
+				match,
+				[]byte(`${1}_${2}`),
+			))
+		},
+	)
+
+	_, _ = w.Write(converted)
 }
 
 // --- Auth Handlers ---
@@ -262,6 +280,7 @@ func TableList(db *sql.DB) http.HandlerFunc {
 		}
 
 		tables, err := ListTables(db, projectId, userID)
+
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
 			return
@@ -339,6 +358,7 @@ func VariableList(db *sql.DB) http.HandlerFunc {
 func VariableCreate(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
+			Name  string `json:"name"`
 			Value string `json:"value"`
 			Type  string `json:"type"`
 		}
@@ -355,9 +375,8 @@ func VariableCreate(db *sql.DB) http.HandlerFunc {
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, errorResp{"invalid table ID"})
 		}
-		name := chi.URLParam(r, "name")
 
-		if err := CreateVariable(db, tableId, name, req.Value, req.Type, userID); err != nil {
+		if err := CreateVariable(db, tableId, req.Name, req.Value, req.Type, userID); err != nil {
 			writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
 			return
 		}
@@ -414,44 +433,71 @@ func VariableUpdate(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func ProjectLoad(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		projectIdStr := chi.URLParam(r, "projectID")
+		projectId, err := strconv.Atoi(projectIdStr)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, errorResp{"invalid project ID"})
+		}
+
+		// Get the user ID from the JWT token
+		_, claims, _ := jwtauth.FromContext(r.Context())
+		userID := int(claims["user_id"].(float64))
+
+		project, err := GetProject(db, projectId, userID)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, project)
+	}
+}
+
 func MountAPIRoutes(r chi.Router, db *sql.DB) {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
+		AllowCredentials: true,
 	}))
 
-	r.Post("/register", Register(db))
-	r.Post("/login", Login(db))
-	r.Post("/access", ProjectAccess(db))
+	// Public API routes
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/register", Register(db))
+		r.Post("/login", Login(db))
+		r.Post("/access", ProjectAccess(db))
 
-	// JWT‑protected subrouter:
-	r.Group(func(r chi.Router) {
-		r.Use(jwtauth.Verifier(tokenAuth))
+		// JWT‑protected subrouter:
+		r.Group(func(r chi.Router) {
+			r.Use(jwtauth.Verifier(tokenAuth))
+			r.Use(jwtauth.Authenticator(tokenAuth))
 
-		r.Use(render.SetContentType(render.ContentTypeJSON))
-		r.Route("/projects", func(r chi.Router) {
-			r.Post("/", ProjectCreate(db))
-			r.Get("/", ProjectList(db))
-			r.Route("/{projectID}", func(r chi.Router) {
-				r.Patch("/", ProjectRename(db))
-				r.Delete("/", ProjectDelete(db))
+			r.Use(render.SetContentType(render.ContentTypeJSON))
+			r.Route("/projects", func(r chi.Router) {
+				r.Post("/", ProjectCreate(db))
+				r.Get("/", ProjectList(db))
+				r.Route("/{projectID}", func(r chi.Router) {
+					r.Get("/", ProjectLoad(db))
+					r.Put("/", ProjectRename(db))
+					r.Delete("/", ProjectDelete(db))
 
-				r.Route("/tables", func(r chi.Router) {
-					r.Post("/", TableCreate(db))
-					r.Get("/", TableList(db))
-					r.Route("/{tableID}", func(r chi.Router) {
-						r.Patch("/", TableRename(db))
-						r.Delete("/", TableDelete(db))
+					r.Route("/tables", func(r chi.Router) {
+						r.Post("/", TableCreate(db))
+						r.Get("/", TableList(db))
+						r.Route("/{tableID}", func(r chi.Router) {
+							r.Put("/", TableRename(db))
+							r.Delete("/", TableDelete(db))
 
-						r.Route("/variables", func(r chi.Router) {
-							r.Post("/", VariableCreate(db))
-							r.Get("/", VariableList(db))
-							r.Route("/{name}", func(r chi.Router) {
-								r.Patch("/", VariableUpdate(db))
-								r.Delete("/", VariableDelete(db))
+							r.Route("/variables", func(r chi.Router) {
+								r.Post("/", VariableCreate(db))
+								r.Get("/", VariableList(db))
+								r.Route("/{name}", func(r chi.Router) {
+									r.Put("/", VariableUpdate(db))
+									r.Delete("/", VariableDelete(db))
+								})
 							})
 						})
 					})
@@ -459,4 +505,32 @@ func MountAPIRoutes(r chi.Router, db *sql.DB) {
 			})
 		})
 	})
+
+	// Frontend routes
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/index.html")
+	})
+
+	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/login.html")
+	})
+
+	r.Get("/register", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/register.html")
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(jwtauth.Verifier(tokenAuth))
+		r.Use(jwtauth.Authenticator(tokenAuth))
+		r.Get("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, "frontend/dashboard.html")
+		})
+		r.Route("/project/{projectID}", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				http.ServeFile(w, r, "frontend/project.html")
+			})
+		})
+	})
+
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("frontend/static"))))
 }

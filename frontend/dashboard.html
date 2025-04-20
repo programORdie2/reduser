@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Project Manager</title>
+		<style>
+			body {
+				font-family: Arial, sans-serif;
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 1rem;
+			}
+			nav {
+				margin-bottom: 1rem;
+			}
+			nav button {
+				width: auto;
+			}
+			.item {
+				margin: 1rem 0;
+				padding: 1rem;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				cursor: pointer;
+			}
+			.item h3 {
+				margin: 0 0 0.5rem 0;
+			}
+			.item p {
+				margin: 0.5rem 0;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Dashboard</h1>
+		<nav>
+			<button id="logoutBtn">Logout</button>
+			<button id="createProjectBtn">Create Project</button>
+		</nav>
+		<div id="projectsList"></div>
+
+		<script src="/static/handlers.js"></script>
+		<script src="/static/dashboard.js"></script>
+	</body>
+</html>
