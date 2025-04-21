@@ -4,46 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Project Manager</title>
-		<style>
-			body {
-				font-family: Arial, sans-serif;
-				max-width: 800px;
-				margin: 0 auto;
-				padding: 1rem;
-			}
-			.hidden {
-				display: none;
-			}
-			input,
-			button,
-			select {
-				margin: 0.5rem 0;
-			}
-			nav {
-				background-color: #333;
-				color: #fff;
-				padding: 1rem;
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-			}
-			nav button {
-				width: auto;
-			}
-			.item {
-				margin: 1rem 0;
-				padding: 1rem;
-				border: 1px solid #ccc;
-				border-radius: 4px;
-				cursor: pointer;
-			}
-			.item h3 {
-				margin: 0 0 0.5rem 0;
-			}
-			.item p {
-				margin: 0.5rem 0;
-			}
-		</style>
+		<link rel="stylesheet" href="/static/project.css" />
 	</head>
 	<body>
 		<nav>
@@ -53,8 +14,6 @@
 		</nav>
 
 		<h1 id="projectTitle"></h1>
-
-		<button id="newTable">New Table</button>
 
 		<section id="tables">
 			<h2>Tables</h2>
