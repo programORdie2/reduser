@@ -86,22 +86,16 @@ async function newVar(currentProjectId, currentTableId, name, type) {
 	);
 }
 
-async function setVariable(
-	currentProjectId,
-	currentTableId,
-	name,
-	type,
-	ogName,
-) {
+async function setVariable(currentProjectId, currentTableId, type, name) {
 	await fetch(
-		`${apiBase}/projects/${currentProjectId}/tables/${currentTableId}/variables/${ogName}`,
+		`${apiBase}/projects/${currentProjectId}/tables/${currentTableId}/variables/${name}`,
 		{
 			method: "PUT",
 			headers: {
 				"Content-Type": "application/json",
 				Authorization: "Bearer " + jwt,
 			},
-			body: JSON.stringify({ new_type: type, new_name: name }),
+			body: JSON.stringify({ new_type: type }),
 		},
 	);
 }
@@ -160,5 +154,5 @@ async function deleteTable(currentProjectId, currentTableId) {
 
 document.getElementById("logoutBtn").onclick = () => {
 	document.cookie = "jwt=;path=/;max-age=0";
-	location.reload();
+	location = "/";
 };

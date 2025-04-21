@@ -68,10 +68,11 @@ func GetProjectByToken(db *sql.DB, token string) (id, userID int, err error) {
 }
 func GetProject(db *sql.DB, projID, userID int) (map[string]any, error) {
 	var name string
+	var token string
 	err := db.QueryRow(
-		`SELECT name FROM projects WHERE id = ? AND user_id = ?`,
+		`SELECT name, token FROM projects WHERE id = ? AND user_id = ?`,
 		projID, userID,
-	).Scan(&name)
+	).Scan(&name, &token)
 	if err == sql.ErrNoRows {
 		return nil, ErrNotFound
 	}
@@ -96,7 +97,7 @@ func GetProject(db *sql.DB, projID, userID int) (map[string]any, error) {
 		tablesWithVariables = append(tablesWithVariables, TableWithVariables{ID: table.ID, Name: table.Name, Variables: variables})
 	}
 
-	return map[string]any{"name": name, "tables": tablesWithVariables}, err
+	return map[string]any{"name": name, "token": token, "tables": tablesWithVariables}, err
 }
 
 func RenameProject(db *sql.DB, projID int, name string, userID int) error {
@@ -214,30 +215,43 @@ func DeleteVariable(db *sql.DB, tableID int, name string, userID int) error {
 	return err
 }
 
-func UpdateVariable(db *sql.DB, tableID int, name, newName, typ string, userID int) error {
+func UpdateVariable(db *sql.DB, tableID int, name, typ string, userID int) error {
 	_, err := db.Exec(
-		`UPDATE variables SET name = ?, type = ? WHERE table_id = ? AND name = ? AND user_id = ?`,
-		newName, typ, tableID, name, userID,
+		`UPDATE variables SET type = ? WHERE table_id = ? AND name = ? AND user_id = ?`,
+		typ, tableID, name, userID,
 	)
 	return err
 }
 
 func GetVariable(db *sql.DB, tableID int, name string) (value, typ string, err error) {
 	err = db.QueryRow(
-		`SELECT value, type FROM variables WHERE table_id = ? AND name = ?`,
-		tableID, name,
+		`SELECT value, type FROM variables WHERE name = ? AND table_id = ?`,
+		name, tableID,
 	).Scan(&value, &typ)
 	if err == sql.ErrNoRows {
 		return "", "", ErrNotFound
 	}
-	return
+
+	return value, typ, err
 }
-func SetVariable(db *sql.DB, tableID int, name, value, typ string) error {
+func SetVariable(db *sql.DB, tableID int, name, value string) error {
 	_, err := db.Exec(
-		`INSERT INTO variables(table_id,name,value,type)
-         VALUES(?,?,?,?)
-         ON CONFLICT(table_id,name) DO UPDATE SET value=excluded.value, type=excluded.type`,
-		tableID, name, value, typ,
+		`UPDATE variables SET value = ? WHERE name = ? AND table_id = ?`,
+		value, name, tableID,
 	)
+
 	return err
+}
+
+func GetVariableType(db *sql.DB, tableID int, name string) (string, error) {
+	var typ string
+	err := db.QueryRow(
+		`SELECT type FROM variables WHERE name = ? AND table_id = ?`,
+		name, tableID,
+	).Scan(&typ)
+	if err == sql.ErrNoRows {
+		return "", ErrNotFound
+	}
+
+	return typ, err
 }

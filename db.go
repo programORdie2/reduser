@@ -38,10 +38,9 @@ func InitDB(path string) *sql.DB {
             UNIQUE(project_id, user_id, name)
         );`,
 		`CREATE TABLE IF NOT EXISTS variables (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL PRIMARY KEY,
             table_id INTEGER NOT NULL,
             user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
             value TEXT,
             type TEXT NOT NULL CHECK (type IN ('string','int','float','bool')),
             FOREIGN KEY(table_id) REFERENCES tables(id) ON DELETE CASCADE,

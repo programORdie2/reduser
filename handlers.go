@@ -109,7 +109,6 @@ func ProjectAccess(db *sql.DB) http.HandlerFunc {
 			TableId int    `json:"table"`
 			VarName string `json:"variable"`
 			Value   string `json:"value,omitempty"`
-			Type    string `json:"type,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeJSON(w, http.StatusBadRequest, errorResp{err.Error()})
@@ -131,20 +130,78 @@ func ProjectAccess(db *sql.DB) http.HandlerFunc {
 				writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
 				return
 			}
+
+			var result any
+			switch typ {
+			case "string":
+				result = val
+			case "int":
+				i, err := strconv.Atoi(val)
+				if err != nil {
+					result = val
+				} else {
+					result = i
+				}
+			case "float":
+				f, err := strconv.ParseFloat(val, 64)
+				if err != nil {
+					result = val
+				} else {
+					result = f
+				}
+			case "bool":
+				b, err := strconv.ParseBool(val)
+				if err != nil {
+					result = val
+				} else {
+					result = b
+				}
+			}
+
 			writeJSON(w, http.StatusOK, map[string]any{
-				"value": val,
+				"value": result,
 				"type":  typ,
 			})
 
 		case "set":
-			if req.Type == "" {
-				writeJSON(w, http.StatusBadRequest, errorResp{"type is required"})
-				return
-			}
-			if err := SetVariable(db, req.TableId, req.VarName, req.Value, req.Type); err != nil {
+			// Make sure the value matches the type of the variable
+			variableType, err := GetVariableType(db, req.TableId, req.VarName)
+			if err != nil {
 				writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
 				return
 			}
+
+			// try to convert the value to the type of the variable
+			switch variableType {
+			case "string":
+			case "int":
+				_, err := strconv.Atoi(req.Value)
+				if err != nil {
+					writeJSON(w, http.StatusBadRequest, errorResp{"invalid value"})
+					return
+				}
+			case "float":
+				_, err := strconv.ParseFloat(req.Value, 64)
+				if err != nil {
+					writeJSON(w, http.StatusBadRequest, errorResp{"invalid value"})
+					return
+				}
+			case "bool":
+				_, err := strconv.ParseBool(req.Value)
+				if err != nil {
+					writeJSON(w, http.StatusBadRequest, errorResp{"invalid value"})
+					return
+				}
+			default:
+				writeJSON(w, http.StatusBadRequest, errorResp{"invalid variable type"})
+				return
+			}
+
+			if err := SetVariable(db, req.TableId, req.VarName, req.Value); err != nil {
+				writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
+				return
+			}
+
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 
 		default:
@@ -407,8 +464,7 @@ func VariableDelete(db *sql.DB) http.HandlerFunc {
 func VariableUpdate(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			NewName string `json:"new_name"`
-			Type    string `json:"new_type"`
+			Type string `json:"new_type"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeJSON(w, http.StatusBadRequest, errorResp{err.Error()})
@@ -425,7 +481,7 @@ func VariableUpdate(db *sql.DB) http.HandlerFunc {
 		}
 		name := chi.URLParam(r, "name")
 
-		if err := UpdateVariable(db, tableId, name, req.NewName, req.Type, userID); err != nil {
+		if err := UpdateVariable(db, tableId, name, req.Type, userID); err != nil {
 			writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
 			return
 		}

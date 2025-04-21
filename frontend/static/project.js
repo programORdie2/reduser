@@ -129,12 +129,6 @@ function renderVars(vars, t) {
 		const updateBtn = document.createElement("button");
 		updateBtn.textContent = "Update";
 		updateBtn.onclick = async () => {
-			// Replace the variable name with an input field
-			const input = document.createElement("input");
-			input.value = v.name;
-			nameTd.textContent = "";
-			nameTd.appendChild(input);
-
 			updateBtn.hidden = true;
 
 			// Replace the variable type with a select field
@@ -150,9 +144,8 @@ function renderVars(vars, t) {
 			const saveBtn = document.createElement("button");
 			saveBtn.textContent = "Save";
 			saveBtn.onclick = async () => {
-				const name = input.value;
 				const type = select.value;
-				await setVariable(id, t.id, name, type, v.name);
+				await setVariable(id, t.id, type, v.name);
 				load();
 			};
 			actionsTd.appendChild(saveBtn);

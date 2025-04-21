@@ -28,6 +28,8 @@ func TestAuthAndProjectFlow(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
+	projectToken := ""
+
 	// Login
 	var loginResp struct {
 		Token string `json:"token"`
@@ -75,6 +77,18 @@ func TestAuthAndProjectFlow(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		resp, _ := http.DefaultClient.Do(req)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Parse response
+		var project struct {
+			ID    int    `json:"id"`
+			Name  string `json:"name"`
+			Token string `json:"token"`
+		}
+		json.NewDecoder(resp.Body).Decode(&project)
+		assert.Equal(t, 0, project.ID)
+		assert.Equal(t, "MyProject", project.Name)
+		assert.NotEmpty(t, project.Token)
+		projectToken = project.Token
 	})
 
 	// Create table
@@ -97,15 +111,46 @@ func TestAuthAndProjectFlow(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
+	// Set variable
+	t.Run("Set variable", func(t *testing.T) {
+		body := `{"variable":"var1","value":"hi","table":1,"token":"` + projectToken + `","action":"set"}`
+		req, _ := http.NewRequest("POST", server.URL+"/api/access", bytes.NewBufferString(body))
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	// Get variable
+	t.Run("Get variable", func(t *testing.T) {
+		body := `{"variable":"var1","table":1,"token":"` + projectToken + `","action":"get"}`
+		req, _ := http.NewRequest("POST", server.URL+"/api/access", bytes.NewBufferString(body))
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		var respBody struct {
+			Value string `json:"value"`
+			Type  string `json:"type"`
+		}
+		json.NewDecoder(resp.Body).Decode(&respBody)
+		assert.Equal(t, "hi", respBody.Value)
+		assert.Equal(t, "string", respBody.Type)
+	})
+
 	// Update variable
 	t.Run("Update variable", func(t *testing.T) {
-		body := `{"new_name":"renamedVar","new_type":"int"}`
+		body := `{"new_type":"int"}`
 		req, _ := http.NewRequest("PUT", server.URL+"/api/projects/1/tables/1/variables/var1", bytes.NewBufferString(body))
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
 		resp, _ := http.DefaultClient.Do(req)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	// Set variable with wrong type
+	t.Run("Set variable with wrong type", func(t *testing.T) {
+		body := `{"variable":"var1","value":"hi","table":1,"token":"` + projectToken + `","action":"set"}`
+		req, _ := http.NewRequest("POST", server.URL+"/api/access", bytes.NewBufferString(body))
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 
 	// Delete variable
