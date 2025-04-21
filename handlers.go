@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -108,7 +109,7 @@ func ProjectAccess(db *sql.DB) http.HandlerFunc {
 			Action  string `json:"action"`
 			TableId int    `json:"table"`
 			VarName string `json:"variable"`
-			Value   string `json:"value,omitempty"`
+			Value   any    `json:"value,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			writeJSON(w, http.StatusBadRequest, errorResp{err.Error()})
@@ -171,23 +172,37 @@ func ProjectAccess(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
+			result := fmt.Sprintf("%v", req.Value)
+
 			// try to convert the value to the type of the variable
 			switch variableType {
 			case "string":
 			case "int":
-				_, err := strconv.Atoi(req.Value)
+				if _, ok := req.Value.(int); ok {
+					break
+				}
+
+				_, err := strconv.Atoi(result)
 				if err != nil {
 					writeJSON(w, http.StatusBadRequest, errorResp{"invalid value"})
 					return
 				}
 			case "float":
-				_, err := strconv.ParseFloat(req.Value, 64)
+				if _, ok := req.Value.(float64); ok {
+					break
+				}
+
+				_, err = strconv.ParseFloat(result, 64)
 				if err != nil {
 					writeJSON(w, http.StatusBadRequest, errorResp{"invalid value"})
 					return
 				}
 			case "bool":
-				_, err := strconv.ParseBool(req.Value)
+				if _, ok := req.Value.(bool); ok {
+					break
+				}
+
+				_, err := strconv.ParseBool(result)
 				if err != nil {
 					writeJSON(w, http.StatusBadRequest, errorResp{"invalid value"})
 					return
@@ -197,7 +212,7 @@ func ProjectAccess(db *sql.DB) http.HandlerFunc {
 				return
 			}
 
-			if err := SetVariable(db, req.TableId, req.VarName, req.Value); err != nil {
+			if err := SetVariable(db, req.TableId, req.VarName, result); err != nil {
 				writeJSON(w, http.StatusInternalServerError, errorResp{err.Error()})
 				return
 			}

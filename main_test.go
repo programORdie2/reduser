@@ -145,6 +145,29 @@ func TestAuthAndProjectFlow(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
+	// Set variable int
+	t.Run("Set variable int", func(t *testing.T) {
+		body := `{"variable":"var1","value":123,"table":1,"token":"` + projectToken + `","action":"set"}`
+		req, _ := http.NewRequest("POST", server.URL+"/api/access", bytes.NewBufferString(body))
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	// Get variable int
+	t.Run("Get variable int", func(t *testing.T) {
+		body := `{"variable":"var1","table":1,"token":"` + projectToken + `","action":"get"}`
+		req, _ := http.NewRequest("POST", server.URL+"/api/access", bytes.NewBufferString(body))
+		resp, _ := http.DefaultClient.Do(req)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		var respBody struct {
+			Value int    `json:"value"`
+			Type  string `json:"type"`
+		}
+		json.NewDecoder(resp.Body).Decode(&respBody)
+		assert.Equal(t, 123, respBody.Value)
+		assert.Equal(t, "int", respBody.Type)
+	})
+
 	// Set variable with wrong type
 	t.Run("Set variable with wrong type", func(t *testing.T) {
 		body := `{"variable":"var1","value":"hi","table":1,"token":"` + projectToken + `","action":"set"}`
