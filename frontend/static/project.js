@@ -21,6 +21,7 @@ document.getElementById("renameBtn").onclick = () => {
 
 function renderProject(project) {
 	document.getElementById("projectTitle").textContent = project.name;
+	document.getElementById("projectToken").textContent = project.token;
 	const tables = project.tables || [];
 	renderTables(tables);
 }

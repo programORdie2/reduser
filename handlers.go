@@ -582,6 +582,10 @@ func MountAPIRoutes(r chi.Router, db *sql.DB) {
 		http.ServeFile(w, r, "frontend/index.html")
 	})
 
+	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "frontend/docs.html")
+	})
+
 	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "frontend/login.html")
 	})

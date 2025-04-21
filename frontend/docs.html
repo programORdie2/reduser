@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>API Documentation</title>
+		<style>
+			body {
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+				line-height: 1.6;
+				color: #333;
+				max-width: 1000px;
+				margin: 0 auto;
+				padding: 20px;
+			}
+			h1 {
+				color: #2c3e50;
+				border-bottom: 2px solid #3498db;
+				padding-bottom: 10px;
+			}
+			h2 {
+				color: #2980b9;
+				margin-top: 30px;
+			}
+			.endpoint {
+				background-color: #f8f9fa;
+				border-left: 4px solid #3498db;
+				padding: 15px;
+				margin: 20px 0;
+				border-radius: 0 4px 4px 0;
+			}
+			.method {
+				display: inline-block;
+				padding: 3px 8px;
+				border-radius: 3px;
+				font-weight: bold;
+				margin-right: 10px;
+			}
+			.get {
+				background-color: #2ecc71;
+				color: white;
+			}
+			.post {
+				background-color: #3498db;
+				color: white;
+			}
+			.put {
+				background-color: #f39c12;
+				color: white;
+			}
+			.delete {
+				background-color: #e74c3c;
+				color: white;
+			}
+			pre {
+				background-color: #f0f0f0;
+				padding: 10px;
+				border-radius: 4px;
+				overflow-x: auto;
+			}
+			.note {
+				background-color: #fffde7;
+				padding: 10px;
+				border-left: 4px solid #ffd600;
+				margin: 10px 0;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>API Documentation</h1>
+
+		<section id="authentication">
+			<h2>Authentication</h2>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/register</strong>
+				<p>Register a new user</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "username": "testuser",
+    "password": "1234"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 201 Created</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/login</strong>
+				<p>Login and get JWT token</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "username": "testuser",
+    "password": "1234"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+				<pre>
+{
+    "token": "JWT_TOKEN_HERE"
+}</pre
+				>
+			</div>
+
+			<div class="note">
+				<strong>Note:</strong> All subsequent requests (except /api/access)
+				require the JWT token in the Authorization header:
+				<pre>Authorization: Bearer JWT_TOKEN_HERE</pre>
+			</div>
+		</section>
+
+		<section id="projects">
+			<h2>Projects</h2>
+
+			<div class="endpoint">
+				<div class="method get">GET</div>
+				<strong>/api/projects</strong>
+				<p>List all projects</p>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+				<pre>
+[{ 
+	"id": 0, 
+	"name": "MyProject" 
+}]</pre
+				>
+			</div>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/projects</strong>
+				<p>Create a new project</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "name": "MyProject"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 201 Created</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method get">GET</div>
+				<strong>/api/projects/{id}</strong>
+				<p>Get project details</p>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+				<pre>
+{
+    "id": 0,
+    "name": "MyProject",
+    "token": "PROJECT_TOKEN_HERE"
+}</pre
+				>
+			</div>
+
+			<div class="endpoint">
+				<div class="method put">PUT</div>
+				<strong>/api/projects/{id}</strong>
+				<p>Update project name</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "name": "RenamedProject"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method delete">DELETE</div>
+				<strong>/api/projects/{id}</strong>
+				<p>Delete a project</p>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+		</section>
+
+		<section id="tables">
+			<h2>Tables</h2>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/projects/{id}/tables</strong>
+				<p>Create a new table in project</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "name": "MyTable"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 201 Created</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method put">PUT</div>
+				<strong>/api/projects/{id}/tables/{id}</strong>
+				<p>Update table name</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "name": "RenamedTable"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method delete">DELETE</div>
+				<strong>/api/projects/{id}/tables/{id}</strong>
+				<p>Delete a table</p>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+		</section>
+
+		<section id="variables">
+			<h2>Variables</h2>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/projects/{id}/tables/{id}/variables</strong>
+				<p>Add a new variable to table</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "name": "var1",
+    "type": "string",
+    "value": ""
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method put">PUT</div>
+				<strong>/api/projects/{id}/tables/{id}/variables/{name}</strong>
+				<p>Update variable type</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "new_type": "int"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method delete">DELETE</div>
+				<strong>/api/projects/{id}/tables/{id}/variables/{name}</strong>
+				<p>Delete a variable</p>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+		</section>
+
+		<section id="access">
+			<h2>Variable Access</h2>
+			<div class="note">
+				<strong>Note:</strong> These endpoints use project token (not JWT) for
+				authentication:
+				<pre>Authorization: Not required (token in request body)</pre>
+			</div>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/access</strong>
+				<p>Set variable value</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "variable": "var1",
+    "value": "hi",
+    "table": 1,
+    "token": "PROJECT_TOKEN_HERE",
+    "action": "set"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+			</div>
+
+			<div class="endpoint">
+				<div class="method post">POST</div>
+				<strong>/api/access</strong>
+				<p>Get variable value</p>
+				<h3>Request</h3>
+				<pre>
+{
+    "variable": "var1",
+    "table": 1,
+    "token": "PROJECT_TOKEN_HERE",
+    "action": "get"
+}</pre
+				>
+				<h3>Response</h3>
+				<p>Status: 200 OK</p>
+				<pre>
+{
+    "value": "hi",
+    "type": "string"
+}</pre
+				>
+			</div>
+		</section>
+	</body>
+</html>
