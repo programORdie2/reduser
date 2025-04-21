@@ -30,7 +30,8 @@ function renderTables(tables) {
 	container.innerHTML = "";
 
 	const newBtn = document.createElement("button");
-	newBtn.textContent = "New Table";
+	newBtn.textContent = "+ New Table";
+	newBtn.style.backgroundColor = "var(--primary-color)";
 	newBtn.onclick = async () => {
 		const name = prompt("New table name:", "Table");
 		if (name) {
@@ -42,13 +43,21 @@ function renderTables(tables) {
 
 	tables.forEach((t) => {
 		const div = document.createElement("div");
+		const header = document.createElement("div");
+		header.style.display = "flex";
+		header.style.justifyContent = "space-between";
+
 		const title = document.createElement("h3");
 		title.textContent = t.name;
-		div.appendChild(title);
+		header.appendChild(title);
+
+		div.appendChild(header);
 		div.className = "item";
 
+		const actions = document.createElement("div");
 		const updateBtn = document.createElement("button");
 		updateBtn.textContent = "Rename Table";
+		updateBtn.style.marginRight = "10px";
 		updateBtn.onclick = () => {
 			const name = prompt("New table name:", "Table");
 			if (name) {
@@ -56,22 +65,26 @@ function renderTables(tables) {
 				load();
 			}
 		};
-		div.appendChild(updateBtn);
+		actions.appendChild(updateBtn);
 
 		const delBtn = document.createElement("button");
 		delBtn.textContent = "Delete Table";
+		delBtn.style.backgroundColor = "var(--warning-color)";
 		delBtn.onclick = () => {
 			if (confirm("Are you sure you want to delete this table?")) {
 				deleteTable(id, t.id);
 				load();
 			}
 		};
-		div.appendChild(delBtn);
+
+		actions.appendChild(delBtn);
+		header.appendChild(actions);
 
 		div.appendChild(renderVars(t.variables || [], t));
 
 		const newVarBtn = document.createElement("button");
-		newVarBtn.textContent = "New Variable";
+		newVarBtn.textContent = "+ New Variable";
+		newVarBtn.style.backgroundColor = "var(--primary-color)";
 		newVarBtn.onclick = async () => {
 			const name = prompt("New variable name:", "Variable");
 			if (name) {
@@ -119,6 +132,8 @@ function renderVars(vars, t) {
 		const actionsTd = document.createElement("td");
 		const deleteBtn = document.createElement("button");
 		deleteBtn.textContent = "Delete";
+		deleteBtn.style.backgroundColor = "var(--warning-color)";
+		deleteBtn.style.marginRight = "10px";
 		deleteBtn.onclick = async () => {
 			if (confirm("Are you sure you want to delete this variable?")) {
 				await deleteVariable(v.name, id, t.id);
